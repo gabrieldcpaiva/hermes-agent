@@ -1,4 +1,4 @@
 Keepalive — resets the GitHub Actions 60-day inactivity timer for scheduled workflows.
 
-Updated: 2026-08-05
+Updated: 2026-08-05 (UTC)
 By: Dylan (agent), on behalf of Gabriel
