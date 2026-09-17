@@ -1,0 +1,100 @@
+name: Install & Update E2E
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  pick-release-tags:
+    name: Pick Release Tags
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.tag-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history including tags
+
+      - name: Fetch all tags
+        run: |
+          git fetch --tags --prune --force 2>/dev/null || true
+          git tag -l
+
+      - name: Extract and validate release tags
+        id: tag-matrix
+        run: |
+          set -eo pipefail
+          
+          # Get all tags matching semantic versioning pattern
+          TAGS=$(git tag -l | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+' || true)
+          
+          if [ -z "$TAGS" ]; then
+            echo "ERROR: No semantic version tags found" >&2
+            exit 1
+          fi
+          
+          # Sort tags by version (v0.20.1, v0.20.2, etc.)
+          SORTED_TAGS=$(echo "$TAGS" | sort -V)
+          
+          # Get the latest 3 tags for testing
+          LATEST_TAGS=$(echo "$SORTED_TAGS" | tail -n 3)
+          
+          # Build JSON matrix
+          MATRIX_JSON="{\"include\":["
+          FIRST=true
+          
+          while IFS= read -r tag; do
+            if [ -z "$tag" ]; then
+              continue
+            fi
+            
+            if [ "$FIRST" = true ]; then
+              FIRST=false
+            else
+              MATRIX_JSON="$MATRIX_JSON,"
+            fi
+            
+            MATRIX_JSON="$MATRIX_JSON{\"tag\":\"$tag\"}"
+          done <<< "$LATEST_TAGS"
+          
+          MATRIX_JSON="$MATRIX_JSON]}"
+          
+          echo "matrix=$MATRIX_JSON" >> "$GITHUB_OUTPUT"
+          echo "Selected tags for testing: $LATEST_TAGS"
+
+  installer:
+    name: Test Installer
+    needs: pick-release-tags
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.pick-release-tags.outputs.matrix) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Test installer for tag ${{ matrix.tag }}
+        run: |
+          echo "Testing installer for ${{ matrix.tag }}"
+          # Add installer test logic here
+
+  update:
+    name: Test Update
+    needs: pick-release-tags
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.pick-release-tags.outputs.matrix) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Test update for tag ${{ matrix.tag }}
+        run: |
+          echo "Testing update for ${{ matrix.tag }}"
+          # Add update test logic here
