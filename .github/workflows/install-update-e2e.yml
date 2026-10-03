@@ -20,54 +20,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch full history including tags
+          fetch-depth: 0
+          fetch-tags: true
 
-      - name: Fetch all tags
+      - name: Fetch upstream release tags
         run: |
-          git fetch --tags --prune --force 2>/dev/null || true
+          set -eo pipefail
+          git fetch --tags --force https://github.com/nousresearch/hermes-agent.git 'refs/tags/*:refs/tags/*' || true
           git tag -l
 
       - name: Extract and validate release tags
         id: tag-matrix
         run: |
           set -eo pipefail
-          
-          # Get all tags matching semantic versioning pattern
-          TAGS=$(git tag -l | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+' || true)
-          
-          if [ -z "$TAGS" ]; then
-            echo "ERROR: No semantic version tags found" >&2
-            exit 1
-          fi
-          
-          # Sort tags by version (v0.20.1, v0.20.2, etc.)
-          SORTED_TAGS=$(echo "$TAGS" | sort -V)
-          
-          # Get the latest 3 tags for testing
-          LATEST_TAGS=$(echo "$SORTED_TAGS" | tail -n 3)
-          
-          # Build JSON matrix
-          MATRIX_JSON="{\"include\":["
-          FIRST=true
-          
-          while IFS= read -r tag; do
-            if [ -z "$tag" ]; then
-              continue
-            fi
-            
-            if [ "$FIRST" = true ]; then
-              FIRST=false
-            else
-              MATRIX_JSON="$MATRIX_JSON,"
-            fi
-            
-            MATRIX_JSON="$MATRIX_JSON{\"tag\":\"$tag\"}"
-          done <<< "$LATEST_TAGS"
-          
-          MATRIX_JSON="$MATRIX_JSON]}"
-          
-          echo "matrix=$MATRIX_JSON" >> "$GITHUB_OUTPUT"
-          echo "Selected tags for testing: $LATEST_TAGS"
+          python3 scripts/pick_release_tags.py --output-github --limit 3
 
   installer:
     name: Test Installer

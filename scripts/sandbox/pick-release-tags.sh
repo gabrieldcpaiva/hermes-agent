@@ -72,9 +72,19 @@ mapfile -t tags < <(
     | sort -V
 )
 
+if [ "${#tags[@]}" -eq 0 ]; then
+  echo "no local release tags in $REPO; fetching upstream nousresearch/hermes-agent" >&2
+  git -C "$REPO" fetch --tags --force https://github.com/nousresearch/hermes-agent.git 'refs/tags/*:refs/tags/*' >&2 || true
+  mapfile -t tags < <(
+    git -C "$REPO" tag --list 'v*' \
+      | grep -E '^v[0-9]{4}\.[0-9]+\.[0-9]+(\.[0-9]+)?$' \
+      | sort -V
+  )
+fi
+
 total="${#tags[@]}"
 if [ "$total" -eq 0 ]; then
-  echo "error: no release tags found in $REPO" >&2
+  echo "error: no release tags found in $REPO or upstream" >&2
   echo '       A shallow clone has no tags: fetch with tags (actions/checkout' >&2
   echo '       with fetch-depth: 0, or fetch-tags: true).' >&2
   exit 1

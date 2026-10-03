@@ -68,10 +68,14 @@ jobs:
       # -- they are the whole input, and the default shallow checkout has none.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          fetch-depth: 0
           filter: blob:none
           fetch-tags: true
           sparse-checkout: scripts/sandbox/pick-release-tags.sh
           sparse-checkout-cone-mode: false
+      - name: Fetch upstream release tags
+        run: |
+          git fetch --tags --force https://github.com/nousresearch/hermes-agent.git 'refs/tags/*:refs/tags/*' || true
       - id: pick
         run: |
           set -euo pipefail
