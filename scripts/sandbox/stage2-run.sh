@@ -162,7 +162,10 @@ if [ "$USE_HOST_RUNTIME" = true ] && [ -d /etc ]; then
 else
   etc_mounts+=(--bind "$DEV_SANDBOX_ROOT/etc" /etc)
 fi
-
+# Node requires both the sandbox MITM CA and the public upstream CA
+cat "$DEV_SANDBOX_ROOT/root/certs/ca.pem" \
+    "$DEV_SANDBOX_ROOT/root/certs/real-ca.pem" \
+    > "$DEV_SANDBOX_ROOT/root/certs/node-ca.pem"
 # /dev without a tty, so a script guarding on `[ -e /dev/tty ]` takes its
 # no-terminal path.
 #
@@ -216,7 +219,8 @@ exec bwrap \
   --setenv CURL_CA_BUNDLE /work/certs/ca.pem \
   --setenv SSL_CERT_FILE /work/certs/ca.pem \
   --setenv GIT_SSL_CAINFO /work/certs/ca.pem \
-  --setenv NODE_EXTRA_CA_CERTS /work/certs/real-ca.pem \
+  --setenv NODE_EXTRA_CA_CERTS /work/certs/node-ca.pem \
+  --setenv npm_config_cafile /work/certs/node-ca.pem \
   --setenv OPENSSL_CONF /work/certs/openssl.cnf \
   --setenv HTTP_PROXY http://127.0.0.1:8080 \
   --setenv HTTPS_PROXY http://127.0.0.1:8080 \
